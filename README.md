@@ -1,4 +1,6 @@
 # After Hours Blackjack
+
+**[Play the live game](https://after-hours-blackjack.bigchez2143.chatgpt.site)**
 A browser blackjack game with table chat, a dealer HTTP API, and a stateless Streamable HTTP MCP server for Grok.
 
 ## Play with Grok

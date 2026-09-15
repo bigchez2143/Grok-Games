@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 const base=process.env.TEST_BASE_URL||'http://localhost:5173';
 let cookie,secret,state;
-async function player(payload){const r=await fetch(base+'/api/table',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:payload?JSON.stringify(payload):undefined});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return {r,data:await r.json()};}
+async function player(payload){const r=await fetch(base+'/api/table',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:payload?JSON.stringify(payload):undefined});const playerCookie=r.headers.getSetCookie().find(c=>c.startsWith('ah_player='));if(playerCookie)cookie=playerCookie.split(';')[0];return {r,data:await r.json()};}
 async function rpc(method,params={},id=1,token=secret){const r=await fetch(base+'/api/mcp/'+token,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id,method,params})});return {r,data:await r.json()};}
 async function tool(name,args={}){const {data,r}=await rpc('tools/call',{name,arguments:args});assert.equal(r.status,200);return data.result;}
 let created=await player({action:'create'});assert.equal(created.r.status,200);state=created.data;secret=state.dealerToken;assert.equal(secret.length,64);
@@ -17,7 +17,7 @@ const batch=await fetch(base+'/api/mcp/'+secret,{method:'POST',headers:{'Content
 const n=await fetch(base+'/api/mcp/'+secret,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'notifications/initialized'})});assert.equal(n.status,202);assert.equal(await n.text(),'');
 assert.equal((await fetch(base+'/api/mcp/'+secret)).status,405);
 state=(await tool('join_table',{name:'Test Grok',expectedRevision:state.revision})).structuredContent;assert.equal(state.mode,'grok');
-state=(await player({action:'chat',message:'Hello from the player',expectedRevision:state.revision})).data;
+const chat=await player({action:'chat',message:'Hello from the player',expectedRevision:state.revision});assert.equal(chat.r.status,200,chat.data.error);state=chat.data;
 let read=(await tool('get_table')).structuredContent;assert.ok(read.messages.some(m=>m.text==='Hello from the player'));assert.ok(!('deck'in read));
 state=(await tool('post_chat',{message:'Hello from the MCP dealer',expectedRevision:read.revision})).structuredContent;
 assert.ok((await player()).data.messages.some(m=>m.text==='Hello from the MCP dealer'));
